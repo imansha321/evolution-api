@@ -4122,26 +4122,9 @@ export class BaileysStartupService extends ChannelStartupService {
   private __groupMetaLastUpdate = new Map<string, number>();
   private __groupMetaInFlight = new Map<string, Promise<GroupMetadata | null>>();
   private __groupMetaLastGlobal = 0;
-  // Limit concurrent S3 uploads to protect CPU/IO for very large accounts
-  private readonly __s3UploadMax = Math.max(1, Number(process.env.S3_CONCURRENCY) || 2);
-  private __s3InFlight = 0;
-  private __s3Waiters: Array<() => void> = [];
 
   private async __delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private async __acquireS3Slot() {
-    if (this.__s3InFlight >= this.__s3UploadMax) {
-      await new Promise<void>((resolve) => this.__s3Waiters.push(resolve));
-    }
-    this.__s3InFlight++;
-  }
-
-  private __releaseS3Slot() {
-    this.__s3InFlight = Math.max(0, this.__s3InFlight - 1);
-    const next = this.__s3Waiters.shift();
-    if (next) next();
   }
 
   private async updateGroupMetadataCache(groupJid: string) {
